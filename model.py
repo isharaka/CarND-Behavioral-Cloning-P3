@@ -3,16 +3,15 @@ import cv2
 import numpy as np
 import sklearn
 
-datadir = 'data/original/'
+datadir = 'data/'
+folders = ['small/', 'small/']
+lines = []
 
-def readsamples(datadir):
-	lines = []
-	with open(datadir+'driving_log.csv') as csvfile:
+def readsamples(folder):
+	with open(datadir+folder+'driving_log.csv') as csvfile:
 		reader = csv.reader(csvfile)
 		for line in reader:
 			lines.append(line)
-
-	return lines
 
 def preprocess(image):
 	image = image[50:140, 0:320]
@@ -31,7 +30,7 @@ def generator(samples, batch_size=32):
             images = []
             angles = []
             for batch_sample in batch_samples:
-                name = datadir + './IMG/'+batch_sample[0].split('/')[-1]
+                name = datadir +batch_sample[0].split('/')[-3]+ '/'+batch_sample[0].split('/')[-2]+ '/'+batch_sample[0].split('/')[-1]
                 center_image = preprocess(cv2.imread(name))
                 center_angle = float(batch_sample[3])
                 images.append(center_image)
@@ -111,8 +110,14 @@ def nvidia():
 
 from sklearn.model_selection import train_test_split
 
+
+
 if __name__ == '__main__':
-	train_samples, validation_samples = train_test_split(readsamples(datadir), test_size=0.2)
+	for f in range(len(folders)):
+		readsamples(folders[f])
+		print(len(lines))
+
+	train_samples, validation_samples = train_test_split(lines, test_size=0.2)
 
 	# compile and train the model using the generator function
 	train_generator = generator(train_samples, batch_size=32)
