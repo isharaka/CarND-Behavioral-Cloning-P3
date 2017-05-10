@@ -5,7 +5,11 @@ import sklearn
 
 datadir = 'data/'
 folders = ['original/', 'recovery/', 'lap3/']
+#folders = ['small/', 'small/']
 lines = []
+
+AUGMENT = False
+LEARNRATE = 0.0005
 
 def readsamples(folder):
     with open(datadir+folder+'driving_log.csv') as csvfile:
@@ -42,14 +46,19 @@ def generator(samples, batch_size=32, multicam=False, augment=False):
                     if (augment == True):
                         rand = np.random.randint(0,99)
 
-                        if(rand < 0):
+                        if(rand < 40):
+                            # Flip the image and steering angle
                             image = cv2.flip(image,1)
                             angle = -1.0 * angle
+                        elif(rand < 70):
+                            # Remove left half of the image
+                            image[0:66, 0:100] = 0
+                        else:
+                            # Remove right half of the image
+                            image[0:66, 100:200] = 0
 
                         images.append(image)
                         angles.append(angle)
-
-
 
             # trim image to only see section with road
             X_train = np.array(images)
@@ -82,7 +91,7 @@ def nvidia():
 
     model.add(Convolution2D(24, 5, 5, subsample=(2,2), border_mode="valid", activation='linear'))
     model.add(ELU())
-    model.add(Dropout(0.2))
+    model.add(Dropout(0.5))
 
     model.add(Convolution2D(36, 5, 5, subsample=(2,2), border_mode="valid", activation='linear'))
     model.add(ELU())
@@ -129,6 +138,11 @@ from keras.callbacks import ModelCheckpoint
 from keras.callbacks import EarlyStopping
 from keras.optimizers import Adam
 
+import matplotlib.pyplot as plt
+
+import pickle
+
+
 
 
 if __name__ == '__main__':
@@ -139,20 +153,40 @@ if __name__ == '__main__':
     train_samples, validation_samples = train_test_split(lines, test_size=0.2)
 
     # compile and train the model using the generator function
-    train_generator = generator(train_samples, batch_size=32, multicam=False, augment=False)
+    train_generator = generator(train_samples, batch_size=32, multicam=False, augment=AUGMENT)
     validation_generator = generator(validation_samples, batch_size=32, multicam=False)
 
     model = nvidia()
-    adam_ptimizer = Adam(lr=0.0005, decay=0.0000)
+    adam_ptimizer = Adam(lr=LEARNRATE, decay=0.0000)
 
     model.compile(loss='mse', optimizer=adam_ptimizer)
 
     callback_check_point = ModelCheckpoint('./cp/model-epoch-{epoch:03d}.h5', monitor='val_loss', verbose=0, save_best_only=False, save_weights_only=False, mode='auto')
     callback_early_stop = EarlyStopping(monitor='val_loss', patience=5, verbose=0, mode='min')
 
-    model.fit_generator(train_generator, samples_per_epoch=len(train_samples)*1, validation_data=validation_generator, nb_val_samples=len(validation_samples), nb_epoch=50, callbacks=[callback_early_stop])
+    training_samples = ( len(train_samples) * 2 ) if (AUGMENT) else len(train_samples)
+    history_object = model.fit_generator(train_generator, samples_per_epoch=training_samples, validation_data=validation_generator, nb_val_samples=len(validation_samples), nb_epoch=100, callbacks=[callback_early_stop])
 
     model.save('model.h5')
+
+    pickle.dump(history_object.history, open("history.p", "wb"))
+    history = pickle.load(open("history.p", "rb"))
+
+    ### print the keys contained in the history object
+    print(history_object.history.keys())
+
+    ### plot the training and validation loss for each epoch
+    #fig = plt.figure()
+    #plt.plot(history['loss'])
+    #plt.plot(history['val_loss'])
+    #plt.title('model mean squared error loss')
+    #plt.ylabel('mean squared error loss')
+    #plt.xlabel('epoch')
+    #plt.legend(['training set', 'validation set'], loc='upper right')
+
+    #plt.show()
+
+    #fig.savefig('history.png')
 
 
 
