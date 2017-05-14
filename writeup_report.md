@@ -141,8 +141,11 @@ It turned out that one of the biggest factors of success was the quality of data
 - Started with the dataset provided by udacity as it gave good results (it did not make it all the way) and added to it.
 - Added a lap of centre lane driving.
 ![alt text][image2]
+
 - Added a lap of recovery driving from either side of the road. I only recorded data when the car is moving towards the centre to prevent the NN learning to go off the road.
-![alt text][image3] ![alt text][image4]
+![alt text][image3]
+![alt text][image4]
+
 - I used a joystick to collect data, since it provided musch smoother steering angles
 
 #####Augmentation
